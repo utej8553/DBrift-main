@@ -1,36 +1,31 @@
 #!/bin/bash
-
 set -e
+
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PID_DIR="$ROOT_DIR/.pids"
+mkdir -p "$PID_DIR"
 
 echo "🚀 Starting DBRift demo..."
 
 # ---------- Backend ----------
 echo "🔧 Starting Spring Boot backend..."
-cd "$(dirname "$0")/backend"
-
-# Run backend in background
-mvn spring-boot:run &
-BACKEND_PID=$!
+cd "$ROOT_DIR/backend"
+mvn spring-boot:run > "$PID_DIR/backend.log" 2>&1 &
+echo $! > "$PID_DIR/backend.pid"
 
 # ---------- Frontend ----------
 echo "🎨 Starting React frontend..."
-cd ../frontend
+cd "$ROOT_DIR/Frontend"
 
-# Install dependencies if node_modules missing
 if [ ! -d "node_modules" ]; then
   echo "📦 Installing frontend dependencies..."
   npm install
 fi
 
-npm run dev &
-FRONTEND_PID=$!
+npm run dev > "$PID_DIR/frontend.log" 2>&1 &
+echo $! > "$PID_DIR/frontend.pid"
 
-# ---------- Info ----------
 echo ""
 echo "✅ Backend running on http://localhost:8080"
 echo "✅ Frontend running on http://localhost:5173"
-echo ""
-echo "Press Ctrl+C to stop both"
-
-# ---------- Wait ----------
-wait $BACKEND_PID $FRONTEND_PID
+echo "Logs: $PID_DIR"
