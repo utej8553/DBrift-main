@@ -3,6 +3,14 @@ package org.utej.backend;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
+
 
 @Service
 public class DatabaseService {
@@ -63,21 +71,48 @@ public class DatabaseService {
     }
 
     // ---- utility ----
-    private void runScript(String script, String... args) {
+    private void runScript(String scriptPath, String... args) {
         try {
+            // 1️⃣ Load script from resources
+            var resource = getClass().getClassLoader().getResource(scriptPath);
+            if (resource == null) {
+                throw new RuntimeException("Script not found in resources: " + scriptPath);
+            }
+
+            // 2️⃣ Copy to temp file
+            File tempScript = File.createTempFile("script-", ".sh");
+            try (InputStream in = resource.openStream();
+                 FileOutputStream out = new FileOutputStream(tempScript)) {
+                in.transferTo(out);
+            }
+
+            // 3️⃣ Make executable
+            tempScript.setExecutable(true);
+
+            // 4️⃣ Build command
             List<String> command = new ArrayList<>();
-            command.add("bash");
-            command.add(script);
+            command.add("/bin/bash");
+            command.add(tempScript.getAbsolutePath());
             command.addAll(Arrays.asList(args));
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
-            Process process = pb.start();
-            process.waitFor();
 
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Provisioning failed");
+            Process process = pb.start();
+
+            try (Scanner scanner = new Scanner(process.getInputStream())) {
+                while (scanner.hasNextLine()) {
+                    System.out.println("[SCRIPT] " + scanner.nextLine());
+                }
             }
+
+            int exitCode = process.waitFor();
+            System.out.println("Script exit code = " + exitCode);
+
+            if (exitCode != 0) {
+                throw new RuntimeException("Provisioning failed, exitCode=" + exitCode);
+            }
+
         } catch (Exception e) {
             throw new RuntimeException("Script execution error", e);
         }
