@@ -13,6 +13,10 @@ public class UserService {
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
 
     public User save(User user) {
         user.setCreationDate(new java.util.Date());
@@ -23,9 +27,6 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
 
     public List<User> findAll() {
         return userRepository.findAll();
