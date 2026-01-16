@@ -1,32 +1,35 @@
 package org.utej.backend;
 
-
 import jakarta.persistence.*;
-
 import java.util.Date;
 
 @Entity
 @Table(name = "databases")
 public class Database {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column(nullable = false)
     private Long userId;
+
     private String dbName;
     private String description;
     private String dbType;
     private String dbVersion;
 
-    //credentials
+    // credentials
     private String username;
     private String password;
+
+    // 🔥 PORT MUST BE INT
     private int port;
+
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
 
-    public Database() {
-    }
+    public Database() {}
 
     public Long getId() {
         return id;
@@ -92,11 +95,12 @@ public class Database {
         this.password = password;
     }
 
-    public String getPort() {
+    // ✅ CORRECT GETTER / SETTER
+    public int getPort() {
         return port;
     }
 
-    public void setPort(String port) {
+    public void setPort(int port) {
         this.port = port;
     }
 
@@ -108,4 +112,3 @@ public class Database {
         this.createdAt = createdAt;
     }
 }
-
