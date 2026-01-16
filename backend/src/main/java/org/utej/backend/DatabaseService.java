@@ -15,11 +15,13 @@ import java.util.Scanner;
 @Service
 public class DatabaseService {
 
-    private final DatabaseRepository databaseRepository;
+    private final PortService portService;
 
-    public DatabaseService(DatabaseRepository databaseRepository) {
-        this.databaseRepository = databaseRepository;
-    }
+public DatabaseService(DatabaseRepository databaseRepository,
+                       PortService portService) {
+    this.databaseRepository = databaseRepository;
+    this.portService = portService;
+}
 
     public Database createDatabase(CreateDatabaseRequest req) {
         if(Integer.valueOf(GlobalPorts.postgres)>6000){
@@ -118,3 +120,4 @@ public class DatabaseService {
         }
     }
 }
+
