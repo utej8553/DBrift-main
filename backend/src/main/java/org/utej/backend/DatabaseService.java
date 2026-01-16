@@ -2,102 +2,92 @@ package org.utej.backend;
 
 import org.springframework.stereotype.Service;
 
-import java.util.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
-
+import java.util.*;
 
 @Service
 public class DatabaseService {
-    private final DatabaseRepository databaseRepository;
 
+    private final DatabaseRepository databaseRepository;
     private final PortService portService;
 
-public DatabaseService(DatabaseRepository databaseRepository,
-                       PortService portService) {
-    this.databaseRepository = databaseRepository;
-    this.portService = portService;
-}
+    public DatabaseService(DatabaseRepository databaseRepository,
+                           PortService portService) {
+        this.databaseRepository = databaseRepository;
+        this.portService = portService;
+    }
 
     public Database createDatabase(CreateDatabaseRequest req) {
 
-    int port = portService.allocatePort();   // 🔥 SAFE allocation
+        int port = portService.allocatePort(); // 🔥 SAFE allocation
 
-    String username = req.getDbName() + UUID.randomUUID().toString().substring(0, 6);
-    String password = UUID.randomUUID().toString();
+        String username = req.getDbName() + UUID.randomUUID().toString().substring(0, 6);
+        String password = UUID.randomUUID().toString();
 
-    try {
-        runScript(
-            "infra/scripts/postgres/create.sh",
-            req.getDbName(),
-            username,
-            password,
-            String.valueOf(port),
-            req.getDbVersion()
-        );
-    } catch (Exception e) {
-        portService.releasePort(port); // 🔁 rollback
-        throw e;
+        try {
+            runScript(
+                "infra/scripts/postgres/create.sh",
+                req.getDbName(),
+                username,
+                password,
+                String.valueOf(port), // script needs string
+                req.getDbVersion()
+            );
+        } catch (Exception e) {
+            portService.releasePort(port); // 🔁 rollback
+            throw e;
+        }
+
+        Database db = new Database();
+        db.setUserId(req.getUserId());
+        db.setDbName(req.getDbName());
+        db.setDescription(req.getDescription());
+        db.setDbType(req.getDbType());
+        db.setDbVersion(req.getDbVersion());
+        db.setUsername(username);
+        db.setPassword(password);
+        db.setPort(port); // ✅ INT
+        db.setCreatedAt(new Date());
+
+        return databaseRepository.save(db);
     }
-
-    Database db = new Database();
-    db.setUserId(req.getUserId());
-    db.setDbName(req.getDbName());
-    db.setDescription(req.getDescription());
-    db.setDbType(req.getDbType());
-    db.setDbVersion(req.getDbVersion());
-    db.setUsername(username);
-    db.setPassword(password);
-    db.setPort(port);
-    db.setCreatedAt(new Date());
-
-    return databaseRepository.save(db);
-}
 
     public List<Database> getUserDatabases(Long userId) {
         return databaseRepository.findByUserId(userId);
     }
 
     public void deleteDatabase(Long dbId) {
-    Database db = databaseRepository.findById(dbId)
-            .orElseThrow(() -> new RuntimeException("DB not found"));
+        Database db = databaseRepository.findById(dbId)
+                .orElseThrow(() -> new RuntimeException("DB not found"));
 
-    runScript(
-        "infra/scripts/postgres/revoke.sh",
-        "postgres-" + db.getUsername(),
-        "pgdata_" + db.getUsername()
-    );
+        runScript(
+            "infra/scripts/postgres/revoke.sh",
+            "postgres-" + db.getUsername(),
+            "pgdata_" + db.getUsername()
+        );
 
-    portService.releasePort(db.getPort()); // 🔓 free port
-    databaseRepository.deleteById(dbId);
-}
-
+        portService.releasePort(db.getPort()); // ✅ INT
+        databaseRepository.deleteById(dbId);
+    }
 
     // ---- utility ----
     private void runScript(String scriptPath, String... args) {
         try {
-            // 1️⃣ Load script from resources
             var resource = getClass().getClassLoader().getResource(scriptPath);
             if (resource == null) {
-                throw new RuntimeException("Script not found in resources: " + scriptPath);
+                throw new RuntimeException("Script not found: " + scriptPath);
             }
 
-            // 2️⃣ Copy to temp file
             File tempScript = File.createTempFile("script-", ".sh");
             try (InputStream in = resource.openStream();
                  FileOutputStream out = new FileOutputStream(tempScript)) {
                 in.transferTo(out);
             }
 
-            // 3️⃣ Make executable
             tempScript.setExecutable(true);
 
-            // 4️⃣ Build command
             List<String> command = new ArrayList<>();
             command.add("/bin/bash");
             command.add(tempScript.getAbsolutePath());
@@ -115,8 +105,6 @@ public DatabaseService(DatabaseRepository databaseRepository,
             }
 
             int exitCode = process.waitFor();
-            System.out.println("Script exit code = " + exitCode);
-
             if (exitCode != 0) {
                 throw new RuntimeException("Provisioning failed, exitCode=" + exitCode);
             }
@@ -126,6 +114,3 @@ public DatabaseService(DatabaseRepository databaseRepository,
         }
     }
 }
-
-
-
