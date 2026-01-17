@@ -295,7 +295,34 @@ For detailed API documentation, see [API_DOCUMENTATION.md](Frontend/API_DOCUMENT
 ---
 
 ## 🛠️ Development
+### Optimized Architecture: Database-Based Container Strategy
 
+**Current Approach**: Each user's database request creates a new isolated Docker container.
+
+**Optimal Enhancement Strategy**: Instead of creating multiple individual Docker containers per user database, optimize resource utilization by:
+
+1. **Shared Database Containers**: Create containerized database instances (one container per database type/version combination)
+2. **Per-User Database Provisioning**: Within each container, create individual databases for each user
+3. **Credential Management**: Generate unique usernames and passwords for each user
+4. **Permission Assignment**: Grant granular permissions to each user's database within the container
+5. **Resource Efficiency**: Multiple user databases coexist within a single container, reducing:
+   - Container overhead
+   - Memory footprint
+   - Host system resource consumption
+   - Port allocation pressure
+
+**Benefits of Database-Based Approach**:
+- ✅ **Reduced Resource Usage**: One shared container vs. multiple individual containers
+- ✅ **Better Scalability**: Serve more users with fewer resources
+- ✅ **Simplified Management**: Centralized database administration
+- ✅ **Cost Efficiency**: Lower infrastructure costs for cloud deployments
+- ✅ **Improved Performance**: Reduced context switching and virtualization overhead
+- ✅ **Easier Backups**: Single container backup covers multiple user databases
+- ✅ **Faster Provisioning**: Database/user creation faster than container creation
+
+This strategy maintains full isolation at the database/user level while optimizing at the container infrastructure level, making DBrift more production-ready for scale.
+
+---
 ### Backend Development
 ```bash
 cd backend
